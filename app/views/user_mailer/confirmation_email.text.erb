@@ -1,0 +1,5 @@
+Hi <%= @user.email %>,
+
+Please confirm your account by clicking the link below:
+
+<%= url_for(controller: 'auth', action: 'confirm', token: @user.confirmation_token, only_path: false) %>
