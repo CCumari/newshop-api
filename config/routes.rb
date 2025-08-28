@@ -36,6 +36,25 @@ Rails.application.routes.draw do
           patch :cancel
           patch :update_status
         end
+        
+        # Payment routes nested under orders
+        resources :payments, only: [:index, :show, :create] do
+          member do
+            post :confirm
+            post :cancel
+            post :accept
+          end
+          
+          # Refund routes nested under payments
+          resources :refunds, only: [:create]
+        end
+        
+        # Direct refund routes under orders
+        resources :refunds, only: [:index, :show] do
+          member do
+            post :cancel
+          end
+        end
       end
 
       # Categories for better product organization
@@ -46,6 +65,9 @@ Rails.application.routes.draw do
       # Checkout flow
       post '/checkout', to: 'checkout#create'
       get '/checkout/session/:id', to: 'checkout#show'
+
+      # Webhook routes (no authentication required)
+      post '/webhooks/stripe', to: 'webhooks#stripe'
     end
   end
 

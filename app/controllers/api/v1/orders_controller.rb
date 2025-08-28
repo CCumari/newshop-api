@@ -2,14 +2,17 @@ class Api::V1::OrdersController < Api::V1::BaseController
   before_action :set_order, only: [:show, :cancel, :update_status]
 
   def index
-    @orders = current_user.orders.includes(:order_items).recent
+    @orders = current_user.orders.includes(:order_items, :payments, :refunds).recent
     render json: @orders.as_json(
       include: {
         order_items: {
           include: :product
+        },
+        payments: {
+          only: [:id, :amount, :status, :payment_method]
         }
       },
-      methods: [:order_number, :total_items]
+      methods: [:order_number, :total_items, :payment_status]
     )
   end
 
@@ -19,9 +22,16 @@ class Api::V1::OrdersController < Api::V1::BaseController
         order_items: {
           include: :product,
           methods: [:total_price]
+        },
+        payments: {
+          only: [:id, :amount, :status, :payment_method, :created_at],
+          methods: [:refundable_amount, :total_refunded]
+        },
+        refunds: {
+          only: [:id, :amount, :status, :reason, :created_at]
         }
       },
-      methods: [:order_number, :total_items, :can_be_cancelled?]
+      methods: [:order_number, :total_items, :can_be_cancelled?, :can_be_refunded?, :payment_status, :refundable_amount]
     )
   end
 
@@ -46,14 +56,20 @@ class Api::V1::OrdersController < Api::V1::BaseController
         )
       end
 
-      # Update product stock
-      cart.cart_items.each do |cart_item|
-        product = cart_item.product
-        product.update!(stock_quantity: product.stock_quantity - cart_item.quantity)
-      end
+      # For backwards compatibility - this creates an order without payment
+      # New flow should use the checkout controller for payment integration
+      if params[:skip_payment] == true
+        # Update product stock
+        cart.cart_items.each do |cart_item|
+          product = cart_item.product
+          product.update!(stock_quantity: product.stock_quantity - cart_item.quantity)
+        end
 
-      # Clear the cart
-      cart.clear!
+        # Clear the cart
+        cart.clear!
+
+        @order.update!(status: 'confirmed')
+      end
 
       render json: @order.as_json(
         include: {
@@ -101,6 +117,6 @@ class Api::V1::OrdersController < Api::V1::BaseController
   end
 
   def order_params
-    params.permit(:shipping_address, :billing_address)
+    params.permit(:shipping_address, :billing_address, :skip_payment)
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_28_040325) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_28_054742) do
   create_table "cart_items", force: :cascade do |t|
     t.integer "cart_id", null: false
     t.integer "product_id", null: false
@@ -57,6 +57,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_28_040325) do
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
 
+  create_table "payments", force: :cascade do |t|
+    t.integer "order_id", null: false
+    t.string "stripe_payment_intent_id"
+    t.decimal "amount"
+    t.string "status"
+    t.string "payment_method"
+    t.string "stripe_customer_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_payments_on_order_id"
+  end
+
   create_table "product_variants", force: :cascade do |t|
     t.integer "product_id", null: false
     t.string "name"
@@ -79,6 +91,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_28_040325) do
     t.string "sku"
     t.index ["category_id"], name: "index_products_on_category_id"
     t.index ["sku"], name: "index_products_on_sku", unique: true
+  end
+
+  create_table "refunds", force: :cascade do |t|
+    t.integer "payment_id", null: false
+    t.integer "order_id", null: false
+    t.decimal "amount"
+    t.string "status"
+    t.string "stripe_refund_id"
+    t.text "reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_refunds_on_order_id"
+    t.index ["payment_id"], name: "index_refunds_on_payment_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -110,8 +135,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_28_040325) do
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "products"
   add_foreign_key "orders", "users"
+  add_foreign_key "payments", "orders"
   add_foreign_key "product_variants", "products"
   add_foreign_key "products", "categories"
+  add_foreign_key "refunds", "orders"
+  add_foreign_key "refunds", "payments"
   add_foreign_key "wishlist_items", "products"
   add_foreign_key "wishlist_items", "users"
 end
